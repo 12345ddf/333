@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>斗地主测试版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .card {
+            width: 60px;
+            height: 80px;
+            background: white;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 5px;
+            position: relative;
+        }
+        .card-red {
+            color: red;
+        }
+        .card-back {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold text-center mb-6">斗地主测试版</h1>
+        
+        <div class="mb-6">
+            <button id="start-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg">
+                开始游戏
+            </button>
+            <div id="status" class="mt-2 text-lg"></div>
+        </div>
+        
+        <div class="mb-6">
+            <h3 class="text-xl font-semibold mb-2">玩家的牌</h3>
+            <div id="player-cards" class="flex flex-wrap min-h-[100px] border border-gray-300 rounded-lg p-4"></div>
+        </div>
+        
+        <div class="mb-6">
+            <h3 class="text-xl font-semibold mb-2">当前桌面上的牌</h3>
+            <div id="current-cards" class="flex flex-wrap min-h-[100px] border border-gray-300 rounded-lg p-4"></div>
+        </div>
+        
+        <div id="action-buttons" class="hidden">
+            <button id="play-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg mr-4">
+                出牌
+            </button>
+            <button id="pass-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg">
+                不出
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 简化的游戏数据
+        const gameState = {
+            playerCards: [],
+            currentCards: [],
+            selectedCards: [],
+            gameStarted: false
+        };
+
+        // 卡牌数据
+        const cardValues = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2', 'S', 'B'];
+        const cardSuits = ['hearts', 'diamonds', 'clubs', 'spades'];
+        const cardSuitSymbols = {
+            'hearts': '♥',
+            'diamonds': '♦',
+            'clubs': '♣',
+            'spades': '♠'
+        };
+
+        // DOM元素
+        const elements = {
+            startBtn: document.getElementById('start-btn'),
+            status: document.getElementById('status'),
+            playerCards: document.getElementById('player-cards'),
+            currentCards: document.getElementById('current-cards'),
+            actionButtons: document.getElementById('action-buttons'),
+            playBtn: document.getElementById('play-btn'),
+            passBtn: document.getElementById('pass-btn')
+        };
+
+        // 初始化
+        function init() {
+            console.log('游戏初始化');
+            elements.startBtn.addEventListener('click', startGame);
+            elements.playBtn.addEventListener('click', playSelectedCards);
+            elements.passBtn.addEventListener('click', passTurn);
+        }
+
+        // 开始游戏
+        function startGame() {
+            console.log('开始游戏');
+            gameState.gameStarted = true;
+            elements.status.textContent = '游戏开始！';
+            
+            // 创建并洗牌
+            const deck = createDeck();
+            shuffleDeck(deck);
+            
+            // 发牌给玩家（简化版，只发10张牌）
+            gameState.playerCards = deck.slice(0, 10);
+            console.log('玩家获得的牌:', gameState.playerCards.map(c => c.displayValue));
+            
+            // 显示玩家的牌
+            displayPlayerCards();
+            
+            // 显示操作按钮
+            elements.actionButtons.classList.remove('hidden');
+            elements.startBtn.disabled = true;
+        }
+
+        // 创建牌组
+        function createDeck() {
+            const deck = [];
+            
+            // 添加普通牌
+            cardSuits.forEach(suit => {
+                cardValues.forEach(value => {
+                    if (value !== 'S' && value !== 'B') { // 排除大小王
+                        deck.push({
+                            value: value,
+                            suit: suit,
+                            displayValue: value === '10' ? '10' : value.charAt(0),
+                            suitSymbol: cardSuitSymbols[suit],
+                            isRed: suit === 'hearts' || suit === 'diamonds'
+                        });
+                    }
+                });
+            });
+            
+            // 添加大小王
+            deck.push({
+                value: 'S',
+                suit: 'joker',
+                displayValue: 'S',
+                suitSymbol: '🃏',
+                isRed: false
+            });
+            
+            deck.push({
+                value: 'B',
+                suit: 'joker',
+                displayValue: 'B',
+                suitSymbol: '🃏',
+                isRed: true
+            });
+            
+            return deck;
+        }
+
+        // 洗牌
+        function shuffleDeck(deck) {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            return deck;
+        }
+
+        // 显示玩家的牌
+        function displayPlayerCards() {
+            elements.playerCards.innerHTML = '';
+            
+            gameState.playerCards.forEach((card, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.className = `card ${card.isRed ? 'card-red' : ''}`;
+                cardElement.textContent = card.displayValue;
+                cardElement.dataset.index = index;
+                
+                // 添加点击事件
+                cardElement.addEventListener('click', () => toggleCardSelection(index));
+                
+                elements.playerCards.appendChild(cardElement);
+            });
+        }
+
+        // 切换卡牌选择状态
+        function toggleCardSelection(index) {
+            const cardElement = elements.playerCards.children[index];
+            const isSelected = cardElement.classList.contains('ring-2');
+            
+            if (isSelected) {
+                // 取消选择
+                cardElement.classList.remove('ring-2', 'ring-yellow-400');
+                gameState.selectedCards = gameState.selectedCards.filter(i => i !== index);
+            } else {
+                // 选择卡牌
+                cardElement.classList.add('ring-2', 'ring-yellow-400');
+                gameState.selectedCards.push(index);
+            }
+            
+            console.log('当前选中的牌索引:', gameState.selectedCards);
+        }
+
+        // 出牌
+        function playSelectedCards() {
+            if (gameState.selectedCards.length === 0) {
+                elements.status.textContent = '请先选择要出的牌！';
+                return;
+            }
+            
+            // 获取选中的牌
+            const selectedCardObjects = gameState.selectedCards
+                .sort((a, b) => a - b)
+                .map(index => gameState.playerCards[index]);
+            
+            console.log('出牌:', selectedCardObjects.map(c => c.displayValue));
+            
+            // 更新当前桌面上的牌
+            gameState.currentCards = selectedCardObjects;
+            
+            // 显示当前桌面上的牌
+            displayCurrentCards();
+            
+            // 从玩家手中移除出的牌
+            gameState.selectedCards.sort((a, b) => b - a).forEach(index => {
+                gameState.playerCards.splice(index, 1);
+            });
+            
+            // 清空选中的牌
+            gameState.selectedCards = [];
+            
+            // 更新玩家的牌显示
+            displayPlayerCards();
+            
+            // 检查游戏是否结束
+            if (gameState.playerCards.length === 0) {
+                elements.status.textContent = '恭喜你获胜！';
+                elements.actionButtons.classList.add('hidden');
+            } else {
+                elements.status.textContent = '出牌成功！';
+            }
+        }
+
+        // 显示当前桌面上的牌
+        function displayCurrentCards() {
+            elements.currentCards.innerHTML = '';
+            
+            gameState.currentCards.forEach((card, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.className = `card ${card.isRed ? 'card-red' : ''}`;
+                cardElement.textContent = card.displayValue;
+                elements.currentCards.appendChild(cardElement);
+            });
+        }
+
+        // 不出牌
+        function passTurn() {
+            elements.status.textContent = '你选择不出牌';
+            console.log('玩家选择不出牌');
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
